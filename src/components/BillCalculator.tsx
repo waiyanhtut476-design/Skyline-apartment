@@ -6,6 +6,7 @@ import {
   saveInvoiceToFirestore, 
   updateInvoiceStatus,
   subscribeToInvoices,
+  deleteInvoiceFromFirestore,
   auth, 
   firebaseConfig, 
   isFirebaseConfigured,
@@ -55,8 +56,6 @@ interface BillCalculatorProps {
   selectedRoomId?: string | null;
   onRoomSelect?: (roomId: string) => void;
 }
-
-const BILLS_STORAGE_KEY = 'skyline_residence_saved_bills';
 
 function formatMonthYearDisplay(yearMonthStr: string): string {
   try {
@@ -190,85 +189,55 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
     }
   }, [selectedRoomId, rooms]);
 
-  // Saved bills history (Option 1: localStorage loaded on initial render)
-  const [savedBills, setSavedBills] = useState<(BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean })[]>(() => {
-    try {
-      const saved = localStorage.getItem(BILLS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // Saved bills history synced in real-time from Firestore 'invoices' collection
+  const [savedBills, setSavedBills] = useState<(BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean })[]>([]);
 
-  // Option 1: Guarantee localStorage persistence on every bill modification
+  // Real-time Firestore Listener for Invoices (Persists across all devices and sessions)
   useEffect(() => {
-    try {
-      localStorage.setItem(BILLS_STORAGE_KEY, JSON.stringify(savedBills));
-    } catch (e) {
-      console.error('Failed to save bills to local storage', e);
-    }
-  }, [savedBills]);
-
-  // Option 2: Firebase Firestore Real-Time Listener (onSnapshot)
-  // Ensures data persists across refreshes, devices, and sessions even if localStorage is cleared
-  useEffect(() => {
-    const unsubscribe = subscribeToInvoices((firestoreInvoices) => {
-      if (firestoreInvoices && firestoreInvoices.length > 0) {
-        setSavedBills((prevBills) => {
-          const map = new Map<string, BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean }>();
-          
-          // Seed with existing local bills
-          prevBills.forEach((b) => map.set(b.id, b));
-
-          // Merge real-time Firestore invoices
-          firestoreInvoices.forEach((inv) => {
-            const billId = inv.id || `inv-${inv.Room}-${inv.Month}`;
-            const existing = map.get(billId);
-            map.set(billId, {
-              id: billId,
-              firestoreId: inv.id,
-              roomNumber: String(inv.Room),
-              floor: Number(String(inv.Room)[0]),
-              tenantName: inv.TenantName || 'အငှားနေသူ',
-              monthYear: inv.Month,
-              roomRent: inv.RoomRent || (Number(String(inv.Room)[0]) <= 4 ? 1700 : 1200),
-              prevElectricUnit: existing?.prevElectricUnit || 0,
-              currElectricUnit: existing?.currElectricUnit || (inv.ElectricDiff || 10),
-              electricDiff: inv.ElectricDiff || Math.round(inv.Electricity / 10),
-              electricRate: 10,
-              electricTotal: inv.Electricity,
-              prevWaterUnit: existing?.prevWaterUnit || 0,
-              currWaterUnit: existing?.currWaterUnit || (inv.WaterDiff || 25),
-              waterDiff: inv.WaterDiff || Math.round(inv.Water / 25),
-              waterRate: 25,
-              waterTotal: inv.Water,
-              commonFee: inv.CommonFee || 100,
-              grandTotal: inv.TotalAmount,
-              status: inv.Status,
-              createdAt: existing?.createdAt || new Date().toISOString(),
-              isFirestoreSynced: true,
-            });
-          });
-
-          const merged = Array.from(map.values()).sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-
-          // Sync to localStorage as offline cache
-          try {
-            localStorage.setItem(BILLS_STORAGE_KEY, JSON.stringify(merged));
-          } catch {}
-
-          return merged;
+    const unsubscribe = subscribeToInvoices(
+      (firestoreInvoices) => {
+        const mappedBills: (BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean })[] = firestoreInvoices.map((inv) => {
+          const roomStr = String(inv.Room);
+          const floorNum = Number(roomStr[0]) || 1;
+          const defaultRent = floorNum <= 4 ? 1700 : 1200;
+          let createdDateStr = new Date().toISOString();
+          if (inv.CreatedAt?.toDate) {
+            createdDateStr = inv.CreatedAt.toDate().toISOString();
+          } else if (inv.CreatedAt?.seconds) {
+            createdDateStr = new Date(inv.CreatedAt.seconds * 1000).toISOString();
+          }
+          return {
+            id: inv.id || `inv-${inv.Room}-${inv.Month}`,
+            firestoreId: inv.id,
+            roomNumber: roomStr,
+            floor: floorNum,
+            tenantName: inv.TenantName || 'အငှားနေသူ',
+            monthYear: inv.Month,
+            roomRent: inv.RoomRent || defaultRent,
+            prevElectricUnit: 0,
+            currElectricUnit: inv.ElectricDiff || Math.round(inv.Electricity / 10),
+            electricDiff: inv.ElectricDiff || Math.round(inv.Electricity / 10),
+            electricRate: 10,
+            electricTotal: inv.Electricity,
+            prevWaterUnit: 0,
+            currWaterUnit: inv.WaterDiff || Math.round(inv.Water / 25),
+            waterDiff: inv.WaterDiff || Math.round(inv.Water / 25),
+            waterRate: 25,
+            waterTotal: inv.Water,
+            commonFee: inv.CommonFee || 100,
+            grandTotal: inv.TotalAmount,
+            status: inv.Status,
+            createdAt: createdDateStr,
+            isFirestoreSynced: true,
+          };
         });
+        setSavedBills(mappedBills);
+      },
+      (error) => {
+        console.error("Firestore invoices subscription error:", error);
+        showToast(`Firestore Invoices ဒေတာ ဖတ်ယူ၍ မရပါ: ${error.message || 'Error'}`);
       }
-    });
+    );
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -340,39 +309,43 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
 
     // Save to Firestore 'invoices' collection
     const firestoreResult = await saveInvoiceToFirestore(firestoreInvoice);
-
-    const newBillRecord: BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean } = {
-      id: firestoreResult.id || `bill-${Date.now()}-${selectedRoomNumber}`,
-      firestoreId: firestoreResult.id,
-      roomNumber: selectedRoomNumber,
-      floor: currentRoom ? currentRoom.floor : Number(selectedRoomNumber[0]),
-      tenantName,
-      monthYear: formattedMonth,
-      roomRent,
-      prevElectricUnit: prevElectric,
-      currElectricUnit: currElectric,
-      electricDiff,
-      electricRate: ELECTRIC_RATE,
-      electricTotal,
-      prevWaterUnit: prevWater,
-      currWaterUnit: currWater,
-      waterDiff,
-      waterRate: WATER_RATE,
-      waterTotal,
-      commonFee,
-      grandTotal,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      isFirestoreSynced: true,
-    };
-
-    setSavedBills(prev => [newBillRecord, ...prev]);
     setIsSavingToFirestore(false);
 
-    // 2. Open Digital Receipt Preview Modal
-    setPreviewBill(newBillRecord);
+    if (firestoreResult.success) {
+      const newBillRecord: BillRecord & { firestoreId?: string; isFirestoreSynced?: boolean } = {
+        id: firestoreResult.id || `bill-${Date.now()}-${selectedRoomNumber}`,
+        firestoreId: firestoreResult.id,
+        roomNumber: selectedRoomNumber,
+        floor: currentRoom ? currentRoom.floor : Number(selectedRoomNumber[0]),
+        tenantName,
+        monthYear: formattedMonth,
+        roomRent,
+        prevElectricUnit: prevElectric,
+        currElectricUnit: currElectric,
+        electricDiff,
+        electricRate: ELECTRIC_RATE,
+        electricTotal,
+        prevWaterUnit: prevWater,
+        currWaterUnit: currWater,
+        waterDiff,
+        waterRate: WATER_RATE,
+        waterTotal,
+        commonFee,
+        grandTotal,
+        status: 'Pending',
+        createdAt: new Date().toISOString(),
+        isFirestoreSynced: true,
+      };
 
-    showToast(`အခန်း ${selectedRoomNumber} အတွက် ဘေလ် (${grandTotal.toLocaleString()}฿) ကို Firestore ထဲသို့ အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။`);
+      setSavedBills(prev => [newBillRecord, ...prev.filter(b => b.firestoreId !== firestoreResult.id)]);
+
+      // 2. Open Digital Receipt Preview Modal
+      setPreviewBill(newBillRecord);
+
+      showToast(`အခန်း ${selectedRoomNumber} အတွက် ဘေလ် (${grandTotal.toLocaleString()}฿) ကို Firestore ထဲသို့ အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။`);
+    } else {
+      showToast(`ဘေလ်ပြေစာ သိမ်းဆည်း၍ မရပါ: ${firestoreResult.error}`);
+    }
   };
 
   // 3. Print / Download Receipt Handlers
@@ -488,9 +461,24 @@ Manager Signature: [Admin Verified]
     showToast('Digital Receipt ဖိုင်ကို ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ။');
   };
 
-  const handleDeleteBill = (billId: string) => {
-    setSavedBills(prev => prev.filter(b => b.id !== billId));
-    showToast('ဘေလ်မှတ်တမ်းကို ဖျက်ပစ်ပြီးပါပြီ။');
+  const handleDeleteBill = async (billId: string) => {
+    if (!isAdminLoggedIn) {
+      openLoginModal();
+      return;
+    }
+
+    const billToDelete = savedBills.find(b => b.id === billId);
+    if (billToDelete?.firestoreId) {
+      const res = await deleteInvoiceFromFirestore(billToDelete.firestoreId);
+      if (res.success) {
+        showToast('ဘေလ်မှတ်တမ်းကို Firestore မှ ဖျက်ပစ်ပြီးပါပြီ။');
+      } else {
+        showToast(`ဘေလ်မှတ်တမ်း ဖျက်၍ မရပါ: ${res.error}`);
+      }
+    } else {
+      setSavedBills(prev => prev.filter(b => b.id !== billId));
+      showToast('ဘေလ်မှတ်တမ်းကို ဖျက်ပစ်ပြီးပါပြီ။');
+    }
   };
 
   const handleToggleBillStatus = async (billId: string) => {
@@ -556,11 +544,11 @@ Manager Signature: [Admin Verified]
             <button
               type="button"
               onClick={() => setShowPersistInfoModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
-              title="Data Persistence (Option 1: localStorage & Option 2: Firestore Real-Time) အသေးစိတ် ကြည့်ရှုရန်"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
+              title="Cloud Firestore Real-Time Persistence အသေးစိတ် ကြည့်ရှုရန်"
             >
-              <Database className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Data Persisted: LocalStorage + Firestore Sync</span>
+              <Database className="w-3.5 h-3.5 text-sky-600" />
+              <span>Data Persisted: Cloud Firestore (Real-Time)</span>
             </button>
 
             {isAdminLoggedIn ? (
@@ -1539,45 +1527,20 @@ Manager Signature: [Admin Verified]
                 </div>
               </div>
 
-              {/* Code Explanation Option 1 */}
+              {/* Code Explanation: Firestore Persistence */}
               <div className="space-y-2">
                 <h4 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                  <span className="w-5 h-5 rounded-md bg-slate-900 text-white flex items-center justify-center text-xs">1</span>
-                  Option 1: localStorage Persistence Logic
+                  <span className="w-5 h-5 rounded-md bg-sky-600 text-white flex items-center justify-center text-xs">✓</span>
+                  Firebase Cloud Firestore Real-Time Synchronization
                 </h4>
                 <p className="text-slate-600 text-[11px]">
-                  State ပြောင်းလဲတိုင်း <code>useEffect</code> ဖြင့် <code>localStorage.setItem()</code> ပြုလုပ်ပြီး Initial Render တွင် <code>getItem()</code> ဖြင့် ပြန်ဆွဲထုတ်ထားသဖြင့် Refresh သို့မဟုတ် Browser ပိတ်ပြီး ပြန်ဖွင့်သော်လည်း Data မပျောက်ပါ။
-                </p>
-                <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto">
-                  <pre>{`// 1. Initial State from localStorage on Mount
-const [savedBills, setSavedBills] = useState(() => {
-  const saved = localStorage.getItem('skyline_residence_saved_bills');
-  return saved ? JSON.parse(saved) : [];
-});
-
-// 2. Auto-save on every state change
-useEffect(() => {
-  localStorage.setItem('skyline_residence_saved_bills', JSON.stringify(savedBills));
-}, [savedBills]);`}</pre>
-                </div>
-              </div>
-
-              {/* Code Explanation Option 2 */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                  <span className="w-5 h-5 rounded-md bg-sky-600 text-white flex items-center justify-center text-xs">2</span>
-                  Option 2: Firebase Firestore Real-Time Sync Logic
-                </h4>
-                <p className="text-slate-600 text-[11px]">
-                  Cloud Firestore ၏ <code>onSnapshot</code> listener ကို အသုံးပြုထားသောကြောင့် အခြားစက် သို့မဟုတ် Admin မှ အသစ်သိမ်းဆည်းလိုက်သော Invoices များကို ချက်ချင်း အချိန်နှင့်တစ်ပြေးညီ ရယူပေးပါသည်။
+                  LocalStorage ကို data အရင်းအမြစ်အဖြစ် မသုံးတော့ဘဲ Cloud Firestore ၏ <code>onSnapshot</code> listener ဖြင့် စက်အားလုံး၊ Browser အားလုံးတွင် Data တူညီစွာ Real-Time Sync လုပ်ဆောင်ပါသည်။
                 </p>
                 <div className="p-3 bg-slate-900 text-sky-300 font-mono text-[11px] rounded-xl overflow-x-auto">
-                  <pre>{`// Firestore onSnapshot listener
+                  <pre>{`// Real-time Firestore invoices listener
 useEffect(() => {
-  const q = query(collection(db, 'invoices'), orderBy('CreatedAt', 'desc'));
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const firestoreData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setSavedBills(firestoreData);
+  const unsubscribe = subscribeToInvoices((invoices) => {
+    setSavedBills(invoices);
   });
   return () => unsubscribe();
 }, []);`}</pre>

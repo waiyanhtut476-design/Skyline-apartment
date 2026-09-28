@@ -1,10 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only authenticated administrator can create or update invoices
+    // 1. Rooms collection (doc ID = room number)
+    // Anyone (including Guests) can read public room state & availability
+    // Only authenticated administrator can create or update rooms
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 2. RoomPrivate collection (doc ID = room number)
+    // Private occupant data: phone number, private notes, contract dates
+    // STRICTLY restricted to authenticated Admin. Guests cannot read or write.
+    match /roomPrivate/{roomId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 3. Invoices collection
+    // Anyone can read invoices; only authenticated Admin can write
     match /invoices/{invoiceId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

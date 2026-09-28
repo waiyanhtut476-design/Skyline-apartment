@@ -1,5 +1,78 @@
 {
   "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Public apartment room record with basic availability and rental status",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Room number (e.g. 101, 611)"
+        },
+        "roomNumber": {
+          "type": "string",
+          "description": "Room number formatted as 101 to 611"
+        },
+        "floor": {
+          "type": "number",
+          "description": "Floor number (1 to 6)"
+        },
+        "roomType": {
+          "type": "string",
+          "description": "Room category description"
+        },
+        "monthlyRent": {
+          "type": "number",
+          "description": "Monthly rent fee (1700฿ for floors 1-4, 1200฿ for floors 5-6)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Available", "Occupied", "Maintenance"],
+          "description": "Current room occupancy status"
+        },
+        "tenantName": {
+          "type": "string",
+          "description": "Public occupant name"
+        }
+      },
+      "required": ["roomNumber", "floor", "monthlyRent", "status"]
+    },
+    "RoomPrivate": {
+      "title": "RoomPrivate",
+      "description": "Sensitive occupant information accessible solely to administrator",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Room number matching room document ID"
+        },
+        "roomNumber": {
+          "type": "string",
+          "description": "Room number (e.g. 101)"
+        },
+        "tenantPhone": {
+          "type": "string",
+          "description": "Occupant phone contact number"
+        },
+        "privateNotes": {
+          "type": "string",
+          "description": "Private administrative and maintenance notes"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Maintenance notes"
+        },
+        "moveInDate": {
+          "type": "string",
+          "description": "Date tenant moved into the room"
+        },
+        "contractEndDate": {
+          "type": "string",
+          "description": "Rental contract expiration date"
+        }
+      },
+      "required": ["roomNumber"]
+    },
     "Invoice": {
       "title": "Invoice",
       "description": "Utility bill and monthly rent invoice record for an apartment room",
@@ -47,6 +120,14 @@
     }
   },
   "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Public apartment rooms directory"
+    },
+    "/roomPrivate/{roomId}": {
+      "schema": "RoomPrivate",
+      "description": "Private tenant phone numbers, contract dates, and admin notes"
+    },
     "/invoices/{invoiceId}": {
       "schema": "Invoice",
       "description": "Apartment utility bill invoices stored by administrator"

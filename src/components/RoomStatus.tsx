@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { Room, RoomStatusType } from '../types/room';
 import { 
   generateInitialRooms, 
-  calculateSummaryStats, 
-  STORAGE_KEY 
+  calculateSummaryStats
 } from '../data/initialRooms';
+import { saveRoomToFirestore } from '../firebase';
 import { RoomModal } from './RoomModal';
 import { OccupantDetailsModal } from './OccupantDetailsModal';
 import { 
@@ -31,37 +31,35 @@ import {
 } from 'lucide-react';
 
 interface RoomStatusProps {
+  rooms?: Room[];
   initialRoomsData?: Room[];
   onRoomsChange?: (rooms: Room[]) => void;
+  onSaveRoom?: (room: Room) => Promise<void> | void;
   onCalculateBill?: (roomNumber: string) => void;
+  showToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
 export const RoomStatus: React.FC<RoomStatusProps> = ({ 
+  rooms: propRooms,
   initialRoomsData, 
   onRoomsChange,
-  onCalculateBill 
+  onSaveRoom,
+  onCalculateBill,
+  showToast: propShowToast
 }) => {
   // Global Firebase Auth State
-  const { isAdminLoggedIn, adminUser, openLoginModal, logoutAdmin } = useAdminAuth();
+  const { isAdminLoggedIn, adminUser, openLoginModal, logoutAdmin, requireAdmin } = useAdminAuth();
 
-  // Initialize rooms from local storage or default initial state (All 66 rooms Available)
-  const [rooms, setRooms] = useState<Room[]>(() => {
+  // Active rooms data from Firestore props (or default 66 rooms fallback)
+  const rooms = useMemo(() => {
+    if (propRooms && propRooms.length > 0) {
+      return propRooms;
+    }
     if (initialRoomsData && initialRoomsData.length > 0) {
       return initialRoomsData;
     }
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 66) {
-          return parsed;
-        }
-      }
-    } catch {
-      // fallback
-    }
     return generateInitialRooms();
-  });
+  }, [propRooms, initialRoomsData]);
 
   // Selected room for modal
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -77,30 +75,15 @@ export const RoomStatus: React.FC<RoomStatusProps> = ({
   // Notification / toast feedback
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  // Sync state if parent initialRoomsData updates
-  useEffect(() => {
-    if (initialRoomsData && initialRoomsData.length === 66) {
-      setRooms(initialRoomsData);
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    if (propShowToast) {
+      propShowToast(msg, type);
+    } else {
+      setFeedbackMessage(msg);
+      setTimeout(() => {
+        setFeedbackMessage(null);
+      }, 3000);
     }
-  }, [initialRoomsData]);
-
-  // Sync to localStorage and optional parent callback
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-    } catch (e) {
-      console.error('Failed to save rooms to storage', e);
-    }
-    if (onRoomsChange) {
-      onRoomsChange(rooms);
-    }
-  }, [rooms, onRoomsChange]);
-
-  const showToast = (msg: string) => {
-    setFeedbackMessage(msg);
-    setTimeout(() => {
-      setFeedbackMessage(null);
-    }, 3000);
   };
 
   // Summary statistics
@@ -150,12 +133,23 @@ export const RoomStatus: React.FC<RoomStatusProps> = ({
   }, [filteredRooms]);
 
   // Handle room update from modal
-  const handleUpdateRoom = (updatedRoom: Room) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r))
-    );
+  const handleUpdateRoom = async (updatedRoom: Room) => {
+    if (!isAdminLoggedIn) {
+      requireAdmin('ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ');
+      return;
+    }
+
+    if (onSaveRoom) {
+      await onSaveRoom(updatedRoom);
+    } else {
+      const res = await saveRoomToFirestore(updatedRoom, true);
+      if (res.success) {
+        showToast(`အခန်း ${updatedRoom.roomNumber} ၏ အချက်အလက်များကို Firestore တွင် သိမ်းဆည်းပြီးပါပြီ။`);
+      } else {
+        showToast(`အခန်းဒေတာ သိမ်းဆည်း၍ မရပါ: ${res.error}`, 'error');
+      }
+    }
     setSelectedRoom(updatedRoom);
-    showToast(`အခန်း ${updatedRoom.roomNumber} ၏ အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။`);
   };
 
   const handleOpenRoomModal = (room: Room) => {

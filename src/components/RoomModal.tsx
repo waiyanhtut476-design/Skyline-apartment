@@ -196,67 +196,77 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, isOpen, onClose, onS
               </div>
             </div>
 
-            <div>
-              <label htmlFor="tenantPhone" className="block text-xs font-semibold text-slate-700 mb-1">
-                ဖုန်းနံပါတ် (Contact Phone)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Phone className="w-4 h-4" />
+            {/* Sensitive Room Private Info (Admin Only: Phone, Contract Dates, Notes) */}
+            {isAdminLoggedIn ? (
+              <>
+                <div>
+                  <label htmlFor="tenantPhone" className="block text-xs font-semibold text-slate-700 mb-1">
+                    ဖုန်းနံပါတ် (Contact Phone)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Phone className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="tenantPhone"
+                      type="tel"
+                      placeholder="081-xxx-xxxx"
+                      value={tenantPhone}
+                      onChange={(e) => setTenantPhone(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                    />
+                  </div>
                 </div>
-                <input
-                  id="tenantPhone"
-                  type="tel"
-                  placeholder="081-xxx-xxxx"
-                  value={tenantPhone}
-                  onChange={(e) => setTenantPhone(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
-                />
-              </div>
-            </div>
 
-            {status === 'Occupied' && (
-              <div className="grid grid-cols-2 gap-3 p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                {status === 'Occupied' && (
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                    <div>
+                      <label htmlFor="moveInDate" className="block text-xs font-semibold text-rose-950 mb-1">
+                        စတင်နေထိုင်သည့်ရက် (Move-in Date)
+                      </label>
+                      <input
+                        id="moveInDate"
+                        type="date"
+                        value={moveInDate}
+                        onChange={(e) => setMoveInDate(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-rose-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contractEndDate" className="block text-xs font-semibold text-rose-950 mb-1">
+                        စာချုပ်ကုန်ဆုံးရက် (Contract End Date)
+                      </label>
+                      <input
+                        id="contractEndDate"
+                        type="date"
+                        value={contractEndDate}
+                        onChange={(e) => setContractEndDate(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-rose-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 font-medium"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label htmlFor="moveInDate" className="block text-xs font-semibold text-rose-950 mb-1">
-                    စတင်နေထိုင်သည့်ရက် (Move-in Date)
+                  <label htmlFor="roomNotes" className="block text-xs font-semibold text-slate-700 mb-1">
+                    သီးသန့်မှတ်ချက် / အထူးအချက်အလက် (Private Notes)
                   </label>
-                  <input
-                    id="moveInDate"
-                    type="date"
-                    value={moveInDate}
-                    onChange={(e) => setMoveInDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-rose-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 font-medium"
+                  <textarea
+                    id="roomNotes"
+                    rows={2}
+                    placeholder="မှတ်ချက်များ (ဥပမာ - စာချုပ်သက်တမ်း၊ ပစ္စည်းစစ်ဆေးမှု စသည်...)"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 resize-none"
                   />
                 </div>
-                <div>
-                  <label htmlFor="contractEndDate" className="block text-xs font-semibold text-rose-950 mb-1">
-                    စာချုပ်ကုန်ဆုံးရက် (Contract End Date)
-                  </label>
-                  <input
-                    id="contractEndDate"
-                    type="date"
-                    value={contractEndDate}
-                    onChange={(e) => setContractEndDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-rose-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 font-medium"
-                  />
-                </div>
+              </>
+            ) : (
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>ဖုန်းနံပါတ်၊ စာချုပ်ရက်စွဲနှင့် Private Notes များကို အိမ်ရှင် (Admin) သာ ဖတ်/ရေးခွင့် ရှိပါသည်။</span>
               </div>
             )}
-
-            <div>
-              <label htmlFor="roomNotes" className="block text-xs font-semibold text-slate-700 mb-1">
-                မှတ်ချက် / အထူးအချက်အလက် (Notes)
-              </label>
-              <textarea
-                id="roomNotes"
-                rows={2}
-                placeholder="မှတ်ချက်များ (ဥပမာ - စာချုပ်သက်တမ်း၊ ပစ္စည်းစစ်ဆေးမှု စသည်...)"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 resize-none"
-              />
-            </div>
           </div>
 
           {/* Quick preset action helpers */}

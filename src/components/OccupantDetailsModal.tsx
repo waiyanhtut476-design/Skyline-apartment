@@ -198,76 +198,81 @@ export const OccupantDetailsModal: React.FC<OccupantDetailsModalProps> = ({
                   </h4>
                 </div>
               </div>
+            </div>
 
-              {room.tenantPhone && (
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                    Phone
+            {/* Phone (Admin Only) */}
+            {isAdminLoggedIn && room.tenantPhone && (
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span>ဖုန်းနံပါတ် (Phone Number):</span>
+                </span>
+                <a 
+                  href={`tel:${room.tenantPhone}`}
+                  className="text-xs font-bold text-rose-700 hover:underline flex items-center gap-1"
+                >
+                  <span>{room.tenantPhone}</span>
+                </a>
+              </div>
+            )}
+
+            {/* Move-in Date & Contract End Date Highlight Grid (Admin Only) */}
+            {isAdminLoggedIn && (
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/70">
+                {/* Move-in Date */}
+                <div className="p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+                    <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                    <span className="text-[11px] font-semibold">Move-in Date</span>
+                  </div>
+                  <div className="font-extrabold text-slate-900 text-sm">
+                    {moveIn.formatted}
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+                    (စတင်နေထိုင်သည့် ရက်စွဲ)
                   </span>
-                  <a 
-                    href={`tel:${room.tenantPhone}`}
-                    className="text-xs font-bold text-rose-700 hover:underline flex items-center gap-1 justify-end"
-                  >
-                    <Phone className="w-3 h-3" />
-                    <span>{room.tenantPhone}</span>
-                  </a>
                 </div>
-              )}
-            </div>
 
-            {/* Move-in Date & Contract End Date Highlight Grid */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/70">
-              {/* Move-in Date */}
-              <div className="p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-slate-500 mb-1">
-                  <Calendar className="w-3.5 h-3.5 text-sky-600" />
-                  <span className="text-[11px] font-semibold">Move-in Date</span>
+                {/* Contract End Date */}
+                <div className="p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+                    <Clock className="w-3.5 h-3.5 text-rose-600" />
+                    <span className="text-[11px] font-semibold">Contract End Date</span>
+                  </div>
+                  <div className="font-extrabold text-slate-900 text-sm">
+                    {contractEnd.formatted}
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+                    (စာချုပ်သက်တမ်းကုန်ဆုံးရက်)
+                  </span>
                 </div>
-                <div className="font-extrabold text-slate-900 text-sm">
-                  {moveIn.formatted}
-                </div>
-                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
-                  (စတင်နေထိုင်သည့် ရက်စွဲ)
-                </span>
               </div>
+            )}
 
-              {/* Contract End Date */}
-              <div className="p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-slate-500 mb-1">
-                  <Clock className="w-3.5 h-3.5 text-rose-600" />
-                  <span className="text-[11px] font-semibold">Contract End Date</span>
+            {/* Contract Status Banner (Admin Only) */}
+            {isAdminLoggedIn && (
+              <div className={`px-3 py-2 rounded-xl text-xs flex items-center justify-between border ${
+                isContractExpired 
+                  ? 'bg-rose-50 text-rose-800 border-rose-200' 
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isContractExpired ? (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  ) : (
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  )}
+                  <span className="font-semibold">
+                    {isContractExpired ? 'စာချုပ်သက်တမ်း ကုန်ဆုံးသွားပါပြီ' : 'တရားဝင် စာချုပ်သက်တမ်းအတွင်း (Active Contract)'}
+                  </span>
                 </div>
-                <div className="font-extrabold text-slate-900 text-sm">
-                  {contractEnd.formatted}
-                </div>
-                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
-                  (စာချုပ်သက်တမ်းကုန်ဆုံးရက်)
-                </span>
-              </div>
-            </div>
-
-            {/* Contract Status Banner */}
-            <div className={`px-3 py-2 rounded-xl text-xs flex items-center justify-between border ${
-              isContractExpired 
-                ? 'bg-rose-50 text-rose-800 border-rose-200' 
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            }`}>
-              <div className="flex items-center gap-2">
-                {isContractExpired ? (
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                ) : (
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                {daysRemaining !== null && !isContractExpired && (
+                  <span className="font-bold tabular-nums bg-white/80 px-2 py-0.5 rounded-md border border-emerald-300 text-[11px]">
+                    {daysRemaining} ရက်ကျန်
+                  </span>
                 )}
-                <span className="font-semibold">
-                  {isContractExpired ? 'စာချုပ်သက်တမ်း ကုန်ဆုံးသွားပါပြီ' : 'တရားဝင် စာချုပ်သက်တမ်းအတွင်း (Active Contract)'}
-                </span>
               </div>
-              {daysRemaining !== null && !isContractExpired && (
-                <span className="font-bold tabular-nums bg-white/80 px-2 py-0.5 rounded-md border border-emerald-300 text-[11px]">
-                  {daysRemaining} ရက်ကျန်
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Room Details & Rent Summary */}
@@ -286,97 +291,84 @@ export const OccupantDetailsModal: React.FC<OccupantDetailsModalProps> = ({
 
           {/* 
             ========================================================================
-            PRIVATE NOTES & MAINTENANCE HISTORY TEXTAREA SECTION
+            PRIVATE NOTES & MAINTENANCE HISTORY TEXTAREA SECTION (Admin Only)
             ========================================================================
           */}
-          <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-700 flex items-center justify-center">
-                  <Wrench className="w-3.5 h-3.5" />
+          {isAdminLoggedIn ? (
+            <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-700 flex items-center justify-center">
+                    <Wrench className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
+                      <span>Private Notes & Maintenance History</span>
+                    </h4>
+                    <span className="text-[11px] text-amber-800 font-medium">
+                      အငှားနေသူ သီးသန့်မှတ်ချက်နှင့် ပြုပြင်ထိန်းသိမ်းမှု မှတ်တမ်းများ
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
-                    <span>Private Notes & Maintenance History</span>
-                  </h4>
-                  <span className="text-[11px] text-amber-800 font-medium">
-                    အငှားနေသူ သီးသန့်မှတ်ချက်နှင့် ပြုပြင်ထိန်းသိမ်းမှု မှတ်တမ်းများ
+
+                {showSavedFeedback && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200 animate-in fade-in">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>သိမ်းဆည်းပြီးပါပြီ (Saved)</span>
                   </span>
-                </div>
+                )}
               </div>
 
-              {showSavedFeedback && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200 animate-in fade-in">
-                  <Check className="w-3.5 h-3.5" />
-                  <span>သိမ်းဆည်းပြီးပါပြီ (Saved)</span>
+              {/* Quick Insertion Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-amber-800/80 font-semibold mr-1">အမြန်ထည့်ရန်:</span>
+                <button
+                  type="button"
+                  onClick={() => handleInsertQuickTag('Air Conditioner Serviced & Filter Cleaned')}
+                  className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + အဲယားကွန်းဆေးပြီး
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertQuickTag('Plumbing & Water Pressure Inspected')}
+                  className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + ရေပိုက်လိုင်းစစ်ပြီး
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertQuickTag('Extra Access Key Card Provided')}
+                  className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + သော့ကတ်ထုတ်ပေးပြီး
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertQuickTag('Room Inspection - Good Condition')}
+                  className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + အခန်းအခြေအနေစစ်ပြီး
+                </button>
+              </div>
+
+              {/* Text Area */}
+              <div className="relative">
+                <textarea
+                  rows={4}
+                  value={notesInput}
+                  onChange={(e) => setNotesInput(e.target.value)}
+                  placeholder="ဥပမာ - 2026-08-10 တွင် လေအေးပေးစက် (Aircon) ဆေးကြောပြီး။ အပိုသော့ကတ် ၁ ခု တောင်းခံထားသည်။ အငှားနေသူ၏ သီးသန့်တောင်းဆိုချက် သို့မဟုတ် ပြုပြင်ထိန်းသိမ်းမှု မှတ်တမ်းများကို ဤနေရာတွင် သိမ်းဆည်းပါ..."
+                  className="w-full p-3 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-slate-800 placeholder:text-slate-400 font-medium leading-relaxed resize-y"
+                />
+              </div>
+
+              {/* Textarea Bottom Action Bar */}
+              <div className="flex items-center justify-between text-[11px] pt-0.5">
+                <span className="text-slate-400 font-mono">
+                  {notesInput.length} စာလုံး
                 </span>
-              )}
-            </div>
 
-            {/* Quick Insertion Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-amber-800/80 font-semibold mr-1">အမြန်ထည့်ရန်:</span>
-              <button
-                type="button"
-                onClick={() => handleInsertQuickTag('Air Conditioner Serviced & Filter Cleaned')}
-                className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
-              >
-                + အဲယားကွန်းဆေးပြီး
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInsertQuickTag('Plumbing & Water Pressure Inspected')}
-                className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
-              >
-                + ရေပိုက်လိုင်းစစ်ပြီး
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInsertQuickTag('Extra Access Key Card Provided')}
-                className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
-              >
-                + သော့ကတ်ထုတ်ပေးပြီး
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInsertQuickTag('Room Inspection - Good Condition')}
-                className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer"
-              >
-                + အခန်းအခြေအနေစစ်ပြီး
-              </button>
-            </div>
-
-            {/* Text Area */}
-            <div className="relative">
-              <textarea
-                rows={4}
-                value={notesInput}
-                onChange={(e) => {
-                  if (!isAdminLoggedIn) {
-                    requireAdmin('ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ');
-                    return;
-                  }
-                  setNotesInput(e.target.value);
-                }}
-                disabled={!isAdminLoggedIn}
-                placeholder={
-                  isAdminLoggedIn
-                    ? "ဥပမာ - 2026-08-10 တွင် လေအေးပေးစက် (Aircon) ဆေးကြောပြီး။ အပိုသော့ကတ် ၁ ခု တောင်းခံထားသည်။ အငှားနေသူ၏ သီးသန့်တောင်းဆိုချက် သို့မဟုတ် ပြုပြင်ထိန်းသိမ်းမှု မှတ်တမ်းများကို ဤနေရာတွင် သိမ်းဆည်းပါ..."
-                    : "🔒 Guest Read-Only Mode ဖြစ်နေပါသဖြင့် မှတ်တမ်းများ ထည့်သွင်းပြင်ဆင်ရန် အိမ်ရှင်အကောင့် အရင်ဝင်ရောက်ပေးပါ..."
-                }
-                className={`w-full p-3 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-slate-800 placeholder:text-slate-400 font-medium leading-relaxed resize-y ${
-                  !isAdminLoggedIn ? 'opacity-80 bg-slate-50 cursor-not-allowed' : ''
-                }`}
-              />
-            </div>
-
-            {/* Textarea Bottom Action Bar */}
-            <div className="flex items-center justify-between text-[11px] pt-0.5">
-              <span className="text-slate-400 font-mono">
-                {notesInput.length} စာလုံး
-              </span>
-
-              {isAdminLoggedIn ? (
                 <button
                   type="button"
                   onClick={handleSaveNotes}
@@ -395,19 +387,16 @@ export const OccupantDetailsModal: React.FC<OccupantDetailsModalProps> = ({
                     </>
                   )}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => requireAdmin('ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all cursor-pointer"
-                  title="Guest Mode တွင် သိမ်းဆည်းခွင့်မရှိပါ"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ</span>
-                </button>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Guest Read-Only:</strong> ဖုန်းနံပါတ်၊ စာချုပ်ရက်စွဲနှင့် သီးသန့်မှတ်ချက် (Private Notes) များကို အိမ်ရှင် (Admin) သာ ဖတ်/ရေးခွင့် ရှိပါသည်။
+              </span>
+            </div>
+          )}
 
           {/* Bottom Actions Bar */}
           <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
