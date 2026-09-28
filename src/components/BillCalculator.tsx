@@ -38,7 +38,9 @@ import {
   Sparkles,
   AlertTriangle,
   Mail,
-  Send
+  Send,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { sendInvoiceEmailMock, EmailSendResult } from '../services/mockEmailService';
 
@@ -115,8 +117,9 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
     }
   });
   const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
-  const [adminEmail, setAdminEmail] = useState<string>('admin@skylineresidence.com');
-  const [adminPassword, setAdminPassword] = useState<string>('admin123');
+  const [adminEmail, setAdminEmail] = useState<string>('');
+  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
 
   // Firestore saving status
@@ -312,18 +315,32 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
   };
 
   // Admin login handlers
+  const openAdminLoginModal = () => {
+    setAdminEmail('');
+    setAdminPassword('');
+    setAdminLoginError(null);
+    setShowPassword(false);
+    setShowAdminLoginModal(true);
+  };
+
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminEmail.trim() && adminPassword.trim()) {
+    const email = adminEmail.trim();
+    const password = adminPassword.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    if (isValidEmail && password.length > 0) {
       setIsAdminLoggedIn(true);
       try {
         localStorage.setItem(ADMIN_SESSION_KEY, 'true');
       } catch {}
       setShowAdminLoginModal(false);
       setAdminLoginError(null);
+      setAdminEmail('');
+      setAdminPassword('');
       showToast('Admin အဖြစ် အောင်မြင်စွာ Login ဝင်ရောက်ပြီးပါပြီ။');
     } else {
-      setAdminLoginError('ကျေးဇူးပြု၍ Email နှင့် Password ထည့်သွင်းပါ။');
+      setAdminLoginError('Email (သို့) Password မှားနေပါသည်');
     }
   };
 
@@ -342,7 +359,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
 
     // Constraint Check: Admin (login ဝင်ထားသူ) တစ်ဦးတည်းသာ Save လုပ်ခွင့်ရှိမည်
     if (!isAdminLoggedIn) {
-      setShowAdminLoginModal(true);
+      openAdminLoginModal();
       return;
     }
 
@@ -526,7 +543,7 @@ Manager Signature: [Admin Verified]
     if (!billToUpdate || !billToUpdate.firestoreId) return;
 
     if (!isAdminLoggedIn) {
-      setShowAdminLoginModal(true);
+      openAdminLoginModal();
       return;
     }
 
@@ -623,7 +640,7 @@ Manager Signature: [Admin Verified]
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowAdminLoginModal(true)}
+                  onClick={openAdminLoginModal}
                   className="ml-1 px-2.5 py-1 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors cursor-pointer shadow-2xs"
                 >
                   Admin Login
@@ -1518,72 +1535,90 @@ Manager Signature: [Admin Verified]
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 animate-in fade-in duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                   <Lock className="w-4 h-4 text-amber-400" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">Admin Login</h4>
-                  <span className="text-[10px] text-slate-400">Apartment Manager Authentication</span>
-                </div>
+                <h4 className="text-base font-bold text-slate-900">Admin Login</h4>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAdminLoginModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
+                onClick={() => {
+                  setShowAdminLoginModal(false);
+                  setAdminLoginError(null);
+                  setAdminEmail('');
+                  setAdminPassword('');
+                }}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleAdminLoginSubmit} className="space-y-4 pt-4 text-xs">
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-amber-900 text-[11px] leading-relaxed">
-                <strong>သတိပေးချက်:</strong> Admin (login ဝင်ထားသူ) တစ်ဦးတည်းသာ Firestore ထဲသို့ ဘေလ် data သိမ်းဆည်းခွင့်ရှိပါသည်။
-              </div>
-
               {adminLoginError && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[11px]">
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
                   {adminLoginError}
                 </div>
               )}
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Admin Email
-                </label>
                 <input
                   type="email"
                   value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 font-medium"
+                  onChange={(e) => {
+                    setAdminEmail(e.target.value);
+                    if (adminLoginError) setAdminLoginError(null);
+                  }}
+                  placeholder="Email"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400"
+                  autoFocus
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Password
-                </label>
+              <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 font-medium"
+                  onChange={(e) => {
+                    setAdminPassword(e.target.value);
+                    if (adminLoginError) setAdminLoginError(null);
+                  }}
+                  placeholder="Password"
+                  className="w-full pl-3.5 pr-10 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400"
                 />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAdminLoginModal(false)}
-                  className="px-3 py-2 text-slate-600 hover:text-slate-800 font-medium rounded-xl cursor-pointer"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAdminLoginModal(false);
+                    setAdminLoginError(null);
+                    setAdminEmail('');
+                    setAdminPassword('');
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 font-semibold rounded-xl transition-colors cursor-pointer text-xs"
                 >
                   မလုပ်တော့ပါ
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer shadow-xs"
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors cursor-pointer shadow-xs text-xs"
                 >
-                  Login ဝင်မည်
+                  Login
                 </button>
               </div>
             </form>
