@@ -30,29 +30,29 @@ export async function updateInvoiceStatus(invoiceId: string, status: 'Pending' |
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 /**
- * Check if real Firebase environment configuration (VITE_FIREBASE_*) is present.
- */
-export const isFirebaseConfigured: boolean = Boolean(
-  import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_API_KEY.trim() !== '' &&
-  !import.meta.env.VITE_FIREBASE_API_KEY.includes('DummyKey') &&
-  !import.meta.env.VITE_FIREBASE_API_KEY.includes('Placeholder') &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID.trim() !== ''
-);
-
-/**
- * Firebase Configuration Placeholder / Env config
- * Project name: firebase-my-skyline-apartment
+ * Firebase Configuration for Skyline Residence
+ * Project: my-skyline-apartment
  */
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyKeyFirebaseMySkylineApartmentPlaceholder",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "firebase-my-skyline-apartment.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "firebase-my-skyline-apartment",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "firebase-my-skyline-apartment.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "957546080921",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:957546080921:web:firebasemyskylinapartment",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyASiqKLrT8x0fxONbGJKex2e_kOHkb9oBQ",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "my-skyline-apartment.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "my-skyline-apartment",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "my-skyline-apartment.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "806962587782",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:806962587782:web:2255e09c099fa725604907",
 };
+
+/**
+ * Check if real Firebase environment configuration is present.
+ */
+export const isFirebaseConfigured: boolean = Boolean(
+  firebaseConfig.apiKey &&
+  firebaseConfig.apiKey.trim() !== '' &&
+  !firebaseConfig.apiKey.includes('DummyKey') &&
+  !firebaseConfig.apiKey.includes('Placeholder') &&
+  firebaseConfig.projectId &&
+  firebaseConfig.projectId.trim() !== ''
+);
 
 // Initialize Firebase App
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
