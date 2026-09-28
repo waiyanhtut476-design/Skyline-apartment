@@ -30,7 +30,19 @@ export async function updateInvoiceStatus(invoiceId: string, status: 'Pending' |
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 /**
- * Firebase Configuration Placeholder
+ * Check if real Firebase environment configuration (VITE_FIREBASE_*) is present.
+ */
+export const isFirebaseConfigured: boolean = Boolean(
+  import.meta.env.VITE_FIREBASE_API_KEY &&
+  import.meta.env.VITE_FIREBASE_API_KEY.trim() !== '' &&
+  !import.meta.env.VITE_FIREBASE_API_KEY.includes('DummyKey') &&
+  !import.meta.env.VITE_FIREBASE_API_KEY.includes('Placeholder') &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID.trim() !== ''
+);
+
+/**
+ * Firebase Configuration Placeholder / Env config
  * Project name: firebase-my-skyline-apartment
  */
 export const firebaseConfig = {
@@ -50,6 +62,13 @@ export const db = getFirestore(app);
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+
+export {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+};
+export type { User };
 
 /**
  * Interface matching requested Firestore 'invoices' collection schema:
