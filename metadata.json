@@ -1,0 +1,6 @@
+{
+  "name": "Skyline Residence - Apartment Dashboard",
+  "description": "Dashboard and Room Status Management for Skyline Residence with 66 rooms across 6 floors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

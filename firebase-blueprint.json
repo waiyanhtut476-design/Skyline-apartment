@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Utility bill and monthly rent invoice record for an apartment room",
+      "type": "object",
+      "properties": {
+        "Room": {
+          "type": "number",
+          "description": "Room number (e.g. 101, 501)"
+        },
+        "Month": {
+          "type": "string",
+          "description": "Billing month (e.g. Oct 2026)"
+        },
+        "Electricity": {
+          "type": "number",
+          "description": "Electricity cost in Baht (units * 35)"
+        },
+        "Water": {
+          "type": "number",
+          "description": "Water cost in Baht (units * 18)"
+        },
+        "TotalAmount": {
+          "type": "number",
+          "description": "Total amount including rent, electric, water, common fee"
+        },
+        "Status": {
+          "type": "string",
+          "enum": ["Pending", "Paid"],
+          "description": "Payment status"
+        },
+        "RoomRent": {
+          "type": "number",
+          "description": "Monthly room rental fee"
+        },
+        "CommonFee": {
+          "type": "number",
+          "description": "Common maintenance fee"
+        },
+        "TenantName": {
+          "type": "string",
+          "description": "Name of the tenant"
+        }
+      },
+      "required": ["Room", "Month", "Electricity", "Water", "TotalAmount", "Status"]
+    }
+  },
+  "firestore": {
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Apartment utility bill invoices stored by administrator"
+    }
+  }
+}
