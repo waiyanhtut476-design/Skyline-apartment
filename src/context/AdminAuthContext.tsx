@@ -1,13 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-export const ADMIN_SESSION_KEY = 'skyline_admin_logged_in';
+import { 
+  auth, 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  isFirebaseConfigured,
+  type User as FirebaseUser 
+} from '../firebase';
 
 interface AdminAuthContextType {
   isAdminLoggedIn: boolean;
+  adminUser: FirebaseUser | null;
+  isFirebaseConfigured: boolean;
   showLoginModal: boolean;
   setShowLoginModal: (show: boolean) => void;
-  loginAsAdmin: (email?: string, pass?: string) => boolean;
-  logoutAdmin: () => void;
+  openLoginModal: () => void;
+  loginAsAdmin: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  logoutAdmin: () => Promise<void>;
   requireAdmin: (customMessage?: string) => boolean;
   toastMessage: string | null;
   showToast: (msg: string) => void;
@@ -16,26 +25,30 @@ interface AdminAuthContextType {
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
 export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
+  // 1. Firebase Auth user ကို App တစ်ခုလုံးအတွက် တစ်နေရာတည်းမှာ onAuthStateChanged နဲ့ ကိုင်ပါ
+  // isAdmin = user ရှိမှ true
+  const [adminUser, setAdminUser] = useState<FirebaseUser | null>(() => auth.currentUser);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => Boolean(auth.currentUser));
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync admin state across tabs
   useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === ADMIN_SESSION_KEY) {
-        setIsAdminLoggedIn(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    try {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          setAdminUser(user);
+          setIsAdminLoggedIn(true);
+        } else {
+          setAdminUser(null);
+          setIsAdminLoggedIn(false);
+        }
+      });
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn("Auth state change error in AdminAuthProvider:", e);
+      setIsAdminLoggedIn(false);
+      setAdminUser(null);
+    }
   }, []);
 
   const showToast = (msg: string) => {
@@ -45,40 +58,60 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     }, 3800);
   };
 
-  const loginAsAdmin = (email = 'admin@skylineresidence.com', pass = 'admin123') => {
-    if (email.trim() && pass.trim()) {
-      setIsAdminLoggedIn(true);
-      try {
-        localStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      } catch {}
-      setShowLoginModal(false);
-      showToast('အိမ်ရှင် (Admin) အကောင့်ဖြင့် အောင်မြင်စွာ ဝင်ရောက်ပြီးပါပြီ။');
-      return true;
-    }
-    return false;
+  const openLoginModal = () => {
+    setShowLoginModal(true);
   };
 
-  const logoutAdmin = () => {
-    setIsAdminLoggedIn(false);
+  // Firebase Authentication signInWithEmailAndPassword သီးသန့် အသုံးပြုခြင်း
+  const loginAsAdmin = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isFirebaseConfigured) {
+      return { success: false, error: 'Firebase မချိတ်ရသေးပါ' };
+    }
+    const cleanEmail = email.trim();
+    const cleanPass = pass.trim();
+    if (!cleanEmail || !cleanPass) {
+      return { success: false, error: 'Email (သို့) Password မှားနေပါသည်' };
+    }
+
     try {
-      localStorage.removeItem(ADMIN_SESSION_KEY);
-    } catch {}
-    showToast('အိမ်ရှင်အကောင့်မှ ထွက်ခွာပြီးပါပြီ (Guest Read-Only Mode သို့ ပြောင်းလဲထားပါသည်)။');
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+      if (userCredential && userCredential.user) {
+        setAdminUser(userCredential.user);
+        setIsAdminLoggedIn(true);
+        setShowLoginModal(false);
+        showToast('Admin အဖြစ် အောင်မြင်စွာ Login ဝင်ရောက်ပြီးပါပြီ။');
+        return { success: true };
+      }
+      setIsAdminLoggedIn(false);
+      return { success: false, error: 'Email (သို့) Password မှားနေပါသည်' };
+    } catch (err: any) {
+      console.warn('Firebase login failed:', err?.code || err?.message);
+      setIsAdminLoggedIn(false);
+      return { success: false, error: 'Email (သို့) Password မှားနေပါသည်' };
+    }
+  };
+
+  const logoutAdmin = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn('Firebase sign out error:', err);
+    }
+    setAdminUser(null);
+    setIsAdminLoggedIn(false);
+    showToast('Admin အကောင့်မှ ထွက်ခွာပြီးပါပြီ (Guest Mode)။');
   };
 
   /**
-   * Guards an action:
-   * Returns true if user is Admin.
-   * If user is Guest (not logged in), displays toast: "ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ",
-   * opens the Login modal, and returns false.
+   * Action guard for admin-only features
    */
   const requireAdmin = (customMessage?: string): boolean => {
     if (isAdminLoggedIn) {
       return true;
     }
-    const message = customMessage || 'ကျေးဇူးပြု၍ အိမ်ရှင်အကောင့် အရင်ဝင်ပါ';
+    const message = customMessage || 'ကျေးဇူးပြု၍ အိမ်ရှင် (Admin) အကောင့် အရင်ဝင်ပါ';
     showToast(message);
-    setShowLoginModal(true);
+    openLoginModal();
     return false;
   };
 
@@ -86,8 +119,11 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     <AdminAuthContext.Provider
       value={{
         isAdminLoggedIn,
+        adminUser,
+        isFirebaseConfigured,
         showLoginModal,
         setShowLoginModal,
+        openLoginModal,
         loginAsAdmin,
         logoutAdmin,
         requireAdmin,

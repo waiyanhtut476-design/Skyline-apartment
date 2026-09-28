@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAdminAuth } from '../context/AdminAuthContext';
 import { Room, BillRecord } from '../types/room';
 import { 
   // Updated Import
@@ -111,30 +112,8 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
   const [commonFee, setCommonFee] = useState<number>(100); // Default 100฿
   const [tenantNameInput, setTenantNameInput] = useState<string>('');
 
-  // Admin Authentication State
-  // Strictly managed by Firebase Authentication and onAuthStateChanged
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => Boolean(auth.currentUser));
-  const [adminUser, setAdminUser] = useState<FirebaseUser | null>(() => auth.currentUser);
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
-  const [adminEmail, setAdminEmail] = useState<string>('');
-  const [adminPassword, setAdminPassword] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
-
-  // 5. onAuthStateChanged နဲ့ login အခြေအနေကို စစ်ပါ
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setAdminUser(user);
-        setIsAdminLoggedIn(true);
-      } else {
-        setAdminUser(null);
-        setIsAdminLoggedIn(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  // Admin Authentication State strictly unified via global AdminAuthContext
+  const { isAdminLoggedIn, adminUser, openLoginModal, logoutAdmin } = useAdminAuth();
 
   // Firestore saving status
   const [isSavingToFirestore, setIsSavingToFirestore] = useState<boolean>(false);
@@ -328,70 +307,6 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
     showToast('မူလတန်ဖိုးများ (မီး ၁၀ ယူနစ်၊ ရေ ၂၅ ယူနစ်၊ Common ၁၀၀฿) သို့ ပြန်လည်သတ်မှတ်ပြီးပါပြီ။');
   };
 
-  // Admin login handlers
-  const openAdminLoginModal = () => {
-    setAdminEmail('');
-    setAdminPassword('');
-    setAdminLoginError(null);
-    setShowPassword(false);
-    setShowAdminLoginModal(true);
-  };
-
-  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 3. Firebase config (VITE_FIREBASE_*) မရှိရင် Login မလုပ်ပါနှင့်
-    if (!isFirebaseConfigured) {
-      setAdminLoginError('Firebase မချိတ်ရသေးပါ');
-      return;
-    }
-
-    const email = adminEmail.trim();
-    const password = adminPassword.trim();
-    if (!email || !password) {
-      setAdminLoginError('Email (သို့) Password မှားနေပါသည်');
-      return;
-    }
-
-    setIsLoggingIn(true);
-    setAdminLoginError(null);
-
-    try {
-      // 1. signInWithEmailAndPassword ကိုပဲ သုံးပါ။ Firebase က အောင်မြင်ကြောင်း မပြန်ဘဲ ဘယ်တော့မှ Admin အဖြစ် မသတ်မှတ်ပါနဲ့။
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (userCredential && userCredential.user) {
-        setIsAdminLoggedIn(true);
-        setAdminUser(userCredential.user);
-        setShowAdminLoginModal(false);
-        setAdminEmail('');
-        setAdminPassword('');
-        setAdminLoginError(null);
-        showToast('Admin အဖြစ် အောင်မြင်စွာ Login ဝင်ရောက်ပြီးပါပြီ။');
-      } else {
-        setIsAdminLoggedIn(false);
-        setAdminLoginError('Email (သို့) Password မှားနေပါသည်');
-      }
-    } catch (error: any) {
-      // 4. Login မှားရင် "Email (သို့) Password မှားနေပါသည်" လို့ပြပြီး ဒီတိုင်း Guest အဖြစ်ပဲ ဆက်နေပါစေ။
-      console.warn('Firebase login failed:', error?.code || error?.message);
-      setIsAdminLoggedIn(false);
-      setAdminLoginError('Email (သို့) Password မှားနေပါသည်');
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleAdminLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.warn('Sign out error:', err);
-    }
-    setIsAdminLoggedIn(false);
-    setAdminUser(null);
-    showToast('Admin အကောင့်မှ ထွက်ခွာပြီးပါပြီ (Guest Mode)။');
-  };
-
   // 1. "Save Bill" Function to Firestore
   // Schema: {Room: 101, Month: "Oct 2026", Electricity: 350, Water: 450, TotalAmount: 2500, Status: "Pending"}
   const handleSaveBill = async (e: React.FormEvent) => {
@@ -399,7 +314,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
 
     // Constraint Check: Admin (login ဝင်ထားသူ) တစ်ဦးတည်းသာ Save လုပ်ခွင့်ရှိမည်
     if (!isAdminLoggedIn) {
-      openAdminLoginModal();
+      openLoginModal();
       return;
     }
 
@@ -583,7 +498,7 @@ Manager Signature: [Admin Verified]
     if (!billToUpdate || !billToUpdate.firestoreId) return;
 
     if (!isAdminLoggedIn) {
-      openAdminLoginModal();
+      openLoginModal();
       return;
     }
 
@@ -661,7 +576,7 @@ Manager Signature: [Admin Verified]
                 </div>
                 <button
                   type="button"
-                  onClick={handleAdminLogout}
+                  onClick={logoutAdmin}
                   className="ml-2 text-[10px] font-semibold text-rose-600 hover:text-rose-700 underline cursor-pointer"
                 >
                   Logout
@@ -680,7 +595,7 @@ Manager Signature: [Admin Verified]
                 </div>
                 <button
                   type="button"
-                  onClick={openAdminLoginModal}
+                  onClick={openLoginModal}
                   className="ml-1 px-2.5 py-1 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors cursor-pointer shadow-2xs"
                 >
                   Admin Login
@@ -1566,115 +1481,6 @@ Manager Signature: [Admin Verified]
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Login Modal */}
-      {showAdminLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
-                  <Lock className="w-4 h-4 text-amber-400" />
-                </div>
-                <h4 className="text-base font-bold text-slate-900">Admin Login</h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAdminLoginModal(false);
-                  setAdminLoginError(null);
-                  setAdminEmail('');
-                  setAdminPassword('');
-                }}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAdminLoginSubmit} className="space-y-4 pt-4 text-xs">
-              {/* 3. Firebase config (VITE_FIREBASE_*) မရှိရင် "Firebase မချိတ်ရသေးပါ" လို့ ပြပါ */}
-              {!isFirebaseConfigured && (
-                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Firebase မချိတ်ရသေးပါ</span>
-                </div>
-              )}
-
-              {/* 4. Login မှားရင် "Email (သို့) Password မှားနေပါသည်" လို့ ပြပါ */}
-              {adminLoginError && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
-                  {adminLoginError}
-                </div>
-              )}
-
-              <div>
-                <input
-                  type="email"
-                  value={adminEmail}
-                  onChange={(e) => {
-                    setAdminEmail(e.target.value);
-                    if (adminLoginError) setAdminLoginError(null);
-                  }}
-                  disabled={!isFirebaseConfigured || isLoggingIn}
-                  placeholder="Email"
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                  autoFocus
-                />
-              </div>
-
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={adminPassword}
-                  onChange={(e) => {
-                    setAdminPassword(e.target.value);
-                    if (adminLoginError) setAdminLoginError(null);
-                  }}
-                  disabled={!isFirebaseConfigured || isLoggingIn}
-                  placeholder="Password"
-                  className="w-full pl-3.5 pr-10 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-                <button
-                  type="button"
-                  disabled={!isFirebaseConfigured || isLoggingIn}
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdminLoginModal(false);
-                    setAdminLoginError(null);
-                    setAdminEmail('');
-                    setAdminPassword('');
-                  }}
-                  className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 font-semibold rounded-xl transition-colors cursor-pointer text-xs"
-                >
-                  မလုပ်တော့ပါ
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isFirebaseConfigured || isLoggingIn}
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors cursor-pointer shadow-xs text-xs disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
-                >
-                  {isLoggingIn ? 'စစ်ဆေးနေသည်...' : 'Login'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

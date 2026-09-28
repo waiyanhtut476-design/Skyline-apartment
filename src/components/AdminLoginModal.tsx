@@ -1,26 +1,54 @@
 import React, { useState } from 'react';
 import { useAdminAuth } from '../context/AdminAuthContext';
-import { Lock, ShieldCheck, X, AlertTriangle, KeyRound } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 export const AdminLoginModal: React.FC = () => {
-  const { showLoginModal, setShowLoginModal, loginAsAdmin } = useAdminAuth();
-  const [email, setEmail] = useState('admin@skylineresidence.com');
-  const [password, setPassword] = useState('admin123');
+  const { 
+    showLoginModal, 
+    setShowLoginModal, 
+    loginAsAdmin, 
+    isFirebaseConfigured 
+  } = useAdminAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!showLoginModal) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleClose = () => {
+    setShowLoginModal(false);
+    setEmail('');
+    setPassword('');
+    setError(null);
+    setShowPassword(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError('ကျေးဇူးပြု၍ Email နှင့် Password ထည့်သွင်းပါ။');
+
+    if (!isFirebaseConfigured) {
+      setError('Firebase မချိတ်ရသေးပါ');
       return;
     }
-    const success = loginAsAdmin(email, password);
-    if (!success) {
-      setError('အကောင့်အချက်အလက် မမှန်ကန်ပါ။');
+
+    if (!email.trim() || !password.trim()) {
+      setError('Email (သို့) Password မှားနေပါသည်');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await loginAsAdmin(email, password);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      handleClose();
     } else {
-      setError(null);
+      setError(result.error || 'Email (သို့) Password မှားနေပါသည်');
     }
   };
 
@@ -31,89 +59,97 @@ export const AdminLoginModal: React.FC = () => {
       aria-modal="true"
       aria-labelledby="admin-login-modal-title"
     >
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 relative">
-        <button
-          onClick={() => setShowLoginModal(false)}
-          className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-          aria-label="Close login modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md">
-            <Lock className="w-6 h-6 text-sky-400" />
+      <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+              <Lock className="w-4 h-4 text-amber-400" />
+            </div>
+            <h4 id="admin-login-modal-title" className="text-base font-bold text-slate-900">
+              Admin Login
+            </h4>
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">
-              Authorization Required
-            </span>
-            <h3 id="admin-login-modal-title" className="text-lg font-extrabold text-slate-900">
-              အိမ်ရှင်အကောင့် Login ဝင်ရန်
-            </h3>
-          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Close login modal"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Guest Warning Notice */}
-        <div className="mb-4 p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">
-            လက်ရှိတွင် <strong>Guest Read-Only Mode</strong> ဖြစ်နေပါသဖြင့် အချက်အလက်များ ပြင်ဆင်ခြင်း၊ ဘေလ်တွက်ချက်သိမ်းဆည်းခြင်းနှင့် ဖျက်ပစ်ခြင်းများ ဆောင်ရွက်ရန် အိမ်ရှင်အကောင့် အရင်ဝင်ရောက်ပေးရမည် ဖြစ်ပါသည်။
-          </p>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4 text-xs">
+          {!isFirebaseConfigured && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Firebase မချိတ်ရသေးပါ</span>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {error && (
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
+              {error}
+            </div>
+          )}
+
           <div>
-            <label className="block text-slate-700 font-bold mb-1">
-              Admin Email (အိမ်ရှင်အီးမေးလ်):
-            </label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white text-slate-900 font-medium"
-              placeholder="admin@skylineresidence.com"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
+              disabled={!isFirebaseConfigured || isSubmitting}
+              placeholder="Email"
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+              autoFocus
             />
           </div>
 
-          <div>
-            <label className="block text-slate-700 font-bold mb-1">
-              Password (စကားဝှက်):
-            </label>
+          <div className="relative">
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white text-slate-900 font-medium"
-              placeholder="••••••••"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              disabled={!isFirebaseConfigured || isSubmitting}
+              placeholder="Password"
+              className="w-full pl-3.5 pr-10 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             />
-          </div>
-
-          {error && (
-            <p className="text-xs text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-xl border border-rose-200">
-              {error}
-            </p>
-          )}
-
-          <div className="pt-2 flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => setShowLoginModal(false)}
-              className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer"
+              disabled={!isFirebaseConfigured || isSubmitting}
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              ဧည့်သည်အဖြစ်သာ ကြည့်မည် (Cancel)
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 font-semibold rounded-xl transition-colors cursor-pointer text-xs"
+            >
+              မလုပ်တော့ပါ
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              disabled={!isFirebaseConfigured || isSubmitting}
+              className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors cursor-pointer shadow-xs text-xs disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
-              <KeyRound className="w-4 h-4 text-sky-400" />
-              <span>Login ဝင်မည်</span>
+              {isSubmitting ? 'စစ်ဆေးနေသည်...' : 'Login'}
             </button>
-          </div>
-
-          <div className="pt-2 text-center text-[11px] text-slate-400">
-            စမ်းသပ်ရန် အဆင်သင့်ဖြည့်ထားပြီးဖြစ်သည် (Default: <code>admin123</code>)
           </div>
         </form>
       </div>

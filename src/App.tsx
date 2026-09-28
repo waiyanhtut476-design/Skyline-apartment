@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminAuthProvider } from './context/AdminAuthContext';
+import { AdminLoginModal } from './components/AdminLoginModal';
 import RoomStatus from './components/RoomStatus';
 import BillCalculator from './components/BillCalculator';
 import { Room } from './types/room';
@@ -245,6 +246,8 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* Global Admin Login Modal managed by AdminAuthContext */}
+        <AdminLoginModal />
       </div>
     </AdminAuthProvider>
   );
